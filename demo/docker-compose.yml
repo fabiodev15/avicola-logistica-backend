@@ -1,0 +1,48 @@
+services:
+  # Base de datos MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: avicola-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: avicola_db
+      MYSQL_ROOT_PASSWORD: avicola123
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - avicola-network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pavicola123" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Aplicación Spring Boot
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avicola-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/avicola_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: avicola123
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - avicola-network
+
+# Volumen para persistir datos de MySQL
+volumes:
+  mysql_data:
+
+    # Red interna para comunicación entre servicios
+networks:
+  avicola-network:
+    driver: bridge
